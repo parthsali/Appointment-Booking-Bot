@@ -13,6 +13,23 @@ export async function startController(ctx) {
 
   if (contact) {
     await ctx.reply(`Welcome back, ${contact.name}!`);
+
+    await ctx.reply("Please select an option:", {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "Book Slot", callback_data: "book_slot" }],
+          [{ text: "Cancel Slot", callback_data: "cancel_slot" }],
+          [
+            {
+              text: "Details about appointment",
+              callback_data: "appointment_details",
+            },
+          ],
+          [{ text: "Help", callback_data: "help" }],
+        ],
+      },
+    });
+
     return;
   }
 
@@ -44,7 +61,7 @@ export async function initializeSlots(ctx) {
   const botId = ctx.botInfo.id;
   const slotDurationInMinutes = 30;
   const startTimeStr = "09:00";
-  const endTimeStr = "17:00";
+  const endTimeStr = "09:30";
 
   const today = new Date();
   const [startHour, startMinute] = startTimeStr.split(":").map(Number);
