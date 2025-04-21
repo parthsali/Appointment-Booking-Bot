@@ -63,7 +63,7 @@ export async function startController(ctx) {
   });
 }
 
-export async function initializeSlots(ctx, startTime, endTime, slotDuration) {
+export async function initializeSlots(ctx, slotDuration, startTime, endTime) {
   const botId = ctx.botInfo.id;
   const slotDurationInMinutes = slotDuration || 30; // Default to 60 minutes if not provided
   const startTimeStr = startTime || "09:00"; // Default start time
@@ -113,6 +113,13 @@ export async function initializeSlots(ctx, startTime, endTime, slotDuration) {
   }
 }
 
+export async function deleteSlots(ctx) {
+  const botId = ctx.botInfo.id;
+
+  const deletedSlots = await Slot.deleteMany({ botId });
+  await ctx.reply(`${deletedSlots.deletedCount} slots deleted successfully.`);
+}
+
 export async function helpController(ctx) {
   await ctx.reply(
     "Welcome to the bot! Here are the available commands and features:\n" +
@@ -123,4 +130,15 @@ export async function helpController(ctx) {
       "- Cancel Slot: Cancel an existing appointment.\n" +
       "- Appointment Details: View details about your appointments."
   );
+}
+
+export async function handleBotMessage(ctx) {
+  const message = ctx.message.text;
+
+  if (message.startsWith("init_slots")) {
+    console.log(message);
+    const [_, startTime, endTime, slotDuration] = message.split("-");
+    await initializeSlots(ctx, slotDuration, startTime, endTime);
+    return;
+  }
 }

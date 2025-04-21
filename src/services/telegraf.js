@@ -6,6 +6,8 @@ import {
   startController,
   helpController,
   initializeSlots,
+  deleteSlots,
+  handleBotMessage,
 } from "../controllers/botController.js";
 
 import {
@@ -27,8 +29,11 @@ bot.start(startController);
 bot.help(helpController);
 
 // commands
-bot.command("initialize", (ctx) => initializeSlots(ctx, "03:00", "03:30", 30));
+// bot.command("initialize", initializeSlots);
 
+bot.command("delete_slots", deleteSlots);
+
+bot.on("message", handleBotMessage);
 // callbacks
 bot.action("book_slot", bookSlotCallback);
 bot.action(/book_slot_(\d+)/, bootSlotWithIdCallback);
