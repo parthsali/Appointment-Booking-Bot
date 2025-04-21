@@ -183,7 +183,6 @@ export const cancelSlotCallback = async (ctx) => {
 };
 
 export const confirmCancelSlotCallback = async (ctx) => {
-  console.log("confirmCancelSlotCallback called");
   const telegramId = String(ctx.from.id);
   const botId = String(ctx.botInfo.id);
   const slotId = ctx.callbackQuery.data.split("_")[2];
@@ -211,47 +210,43 @@ export const confirmCancelSlotCallback = async (ctx) => {
     .exec();
 
   if (waitingContact) {
-    const currentTime = new Date();
-    const slotStartTime = new Date(slot.startTime);
+    slot.bookedBy = waitingContact.contactId;
+    slot.isBooked = true;
 
-    // Check if the current time is less than 30 minutes before the slot's start time
-    if (slotStartTime - currentTime >= 30 * 60 * 1000) {
-      slot.bookedBy = waitingContact.contactId;
-      slot.isBooked = true;
+    await slot.save();
 
-      await slot.save();
+    // Remove the contact from the waiting queue
+    await WaitingQueue.deleteOne({ _id: waitingContact._id });
 
-      // Remove the contact from the waiting queue
-      await WaitingQueue.deleteOne({ _id: waitingContact._id });
+    // Notify the contact
 
-      // Notify the contact
-      const contact = await Contact.findById(waitingContact.contactId).exec();
-      if (contact) {
-        await ctx.telegram.sendMessage(
-          contact.telegramId,
-          `A slot has become available and has been assigned to you. The slot is from ${new Date(
-            slot.startTime
-          ).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })} to ${new Date(slot.endTime).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })}.`
-        );
+    const contact = await Contact.findById(waitingContact.contactId);
 
-        await ctx.editMessageText(`Slot cancelled successfully.`, {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "Back", callback_data: "back_to_start_menu" }],
-            ],
-          },
-        });
-      }
-      return;
+    if (contact) {
+      await ctx.telegram.sendMessage(
+        contact.telegramId,
+        `A slot has become available and has been assigned to you. The slot is from ${new Date(
+          slot.startTime
+        ).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })} to ${new Date(slot.endTime).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })}.`
+      );
+
+      await ctx.editMessageText(`Slot cancelled successfully.`, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "Back", callback_data: "back_to_start_menu" }],
+          ],
+        },
+      });
     }
+    return;
   }
 
   slot.isBooked = false;
@@ -357,4 +352,75 @@ export const helpCallback = async (ctx) => {
       },
     }
   );
+};
+
+export const attendCallback = async (ctx) => {
+  const telegramId = String(ctx.from.id);
+  const botId = String(ctx.botInfo.id);
+  const callbackData = ctx.callbackQuery.data;
+  const isAttending = callbackData.startsWith("attend");
+  const slotId = callbackData.split("_")[1];
+
+  const contact = await Contact.findOne({ telegramId }).exec();
+
+  if (!contact) {
+    await ctx.editMessageText("Contact not found. Please register first.");
+    return;
+  }
+
+  const slot = await Slot.findOne({
+    botId,
+    bookedBy: contact._id,
+    isBooked: true,
+  }).exec();
+
+  if (!slot) {
+    await ctx.editMessageText("Slot not found.");
+    return;
+  }
+
+  if (isAttending) {
+    await ctx.editMessageText("Thank you for confirming your attendance.");
+  } else {
+    await ctx.editMessageText("Thank you for confirming your non-attendance.");
+
+    slot.isBooked = false;
+    slot.bookedBy = null;
+    await slot.save();
+
+    const waitingContact = await WaitingQueue.findOne()
+      .sort({ requestedAt: 1 })
+      .exec();
+
+    if (waitingContact) {
+      console.log("inside waiting queue");
+      slot.bookedBy = waitingContact.contactId;
+      slot.isBooked = true;
+
+      await slot.save();
+
+      await WaitingQueue.deleteOne({ _id: waitingContact._id });
+
+      const waitingContactDetails = await Contact.findById(
+        waitingContact.contactId
+      ).exec();
+
+      if (waitingContactDetails) {
+        await ctx.telegram.sendMessage(
+          waitingContactDetails.telegramId,
+          `A slot has become available and has been assigned to you. The slot is from ${new Date(
+            slot.startTime
+          ).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })} to ${new Date(slot.endTime).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })}.`
+        );
+      }
+    }
+  }
 };
