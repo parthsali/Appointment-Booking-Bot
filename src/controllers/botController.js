@@ -135,7 +135,7 @@ export async function helpController(ctx) {
 export async function handleBotMessage(ctx) {
   const message = ctx.message.text;
 
-  if (message.startsWith("init_slots")) {
+  if (message && message.startsWith("init_slots")) {
     console.log(message);
     const [_, startTime, endTime, slotDuration] = message.split("-");
     await initializeSlots(ctx, slotDuration, startTime, endTime);
