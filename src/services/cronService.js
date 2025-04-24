@@ -64,7 +64,6 @@ async function deleteExpiredSlots() {
 
   await Slot.deleteMany({
     startTime: { $lt: currentTime },
-    bookedBy: null,
   });
 
   console.log("Expired slots deleted.");
