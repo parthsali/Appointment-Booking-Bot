@@ -3,7 +3,7 @@ import Slot from "../models/slotModel.js";
 import Contact from "../models/contactMode.js";
 import { bot } from "../services/telegraf.js";
 
-export async function startController(ctx) {
+export async function startController(ctx, bot) {
   const botId = ctx.botInfo.id;
   const telegramId = ctx.from.id;
   const firstName = ctx.from.first_name;
@@ -41,26 +41,7 @@ export async function startController(ctx) {
       .resize()
   );
 
-  bot.on("contact", async (ctx) => {
-    const contact = ctx.message.contact;
-    const phoneNumber = contact.phone_number;
-    const telegramId = contact.user_id;
-
-    const newContact = new Contact({
-      telegramId: telegramId,
-      name: `${ctx.from.first_name} ${ctx.from.last_name || ""}`,
-      contactNo: `+${phoneNumber}`,
-    });
-
-    await newContact.save();
-
-    await ctx.reply("Contact saved successfully.", {
-      reply_markup: {
-        remove_keyboard: true,
-      },
-    });
-    await ctx.reply("Type /start to start the bot.");
-  });
+  console.log("Contact request sent to user:", telegramId);
 }
 
 export async function initializeSlots(ctx, slotDuration, startTime, endTime) {
@@ -70,6 +51,7 @@ export async function initializeSlots(ctx, slotDuration, startTime, endTime) {
   const endTimeStr = endTime || "17:00"; // Default end time
 
   const today = new Date();
+  today.setDate(today.getDate() + 1); // Move to the next day
   const [startHour, startMinute] = startTimeStr.split(":").map(Number);
   const [endHour, endMinute] = endTimeStr.split(":").map(Number);
 
@@ -134,6 +116,28 @@ export async function helpController(ctx) {
 
 export async function handleBotMessage(ctx) {
   const message = ctx.message.text;
+
+  if (ctx.message.contact) {
+    const contact = ctx.message.contact;
+    const phoneNumber = contact.phone_number;
+    const telegramId = contact.user_id;
+
+    const newContact = new Contact({
+      telegramId: telegramId,
+      name: `${ctx.from.first_name} ${ctx.from.last_name || ""}`,
+      contactNo: `${phoneNumber}`,
+    });
+
+    await newContact.save();
+
+    await ctx.reply("Contact saved successfully.", {
+      reply_markup: {
+        remove_keyboard: true,
+      },
+    });
+    await ctx.reply("Type /start to start the bot.");
+    return;
+  }
 
   if (message && message.startsWith("init_slots")) {
     console.log(message);

@@ -25,7 +25,7 @@ export const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
 
 bot.telegram.setMyCommands(commands);
 
-bot.start(startController);
+bot.start((ctx) => startController(ctx, bot));
 bot.help(helpController);
 
 // commands
